@@ -1,4 +1,4 @@
-# Pastez Bin
+# PastezBin
 
 A very simple browser-based text and image paste tool that stores everything directly in the URL.
 
@@ -11,7 +11,7 @@ Just text → compressed → stored in the URL.
 
 ## What This Does
 
-- You type text or paste and image in the editor.
+- You type some text or paste an image.
 - This is then compressed using **Deflate (pako)**.
 - The compressed data is encoded safely for URLs.
 - It is stored in the URL hash (`#` part).

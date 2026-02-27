@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8">
-  <title>Pastez Bin</title>
+  <title>PastezBin</title>
   <link rel="icon" href="/static/favicon.ico">
 
   <style>
@@ -17,12 +17,41 @@
       flex-direction: column;
     }
 
+    /* Top bar */
+    #topbar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-bottom: 1px solid #313244;
+      font-size: 13px;
+      height: 44px;
+    }
+
+    #brand {
+      position: absolute;
+      left: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #brand img {
+      width: 20px;
+      height: 20px;
+    }
+
+    #brand .title {
+      color: #cdd6f4;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+    }
+
     /* Tabs */
     #tabs {
       display: flex;
       justify-content: center;
-      border-bottom: 1px solid #313244;
-      font-size: 13px;
+      gap: 8px;
     }
 
     .tab {
@@ -66,7 +95,6 @@
       overflow: auto;
     }
 
-    /* CSS Placeholder (no JS needed) */
     #imageView:empty::before {
       content: "Paste an image here (Ctrl+V)";
       display: flex;
@@ -121,9 +149,15 @@
 
 <body>
 
-  <div id="tabs">
-    <div class="tab active" data-mode="text">text</div>
-    <div class="tab" data-mode="image">image</div>
+  <div id="topbar">
+    <div id="brand">
+      <img src="/static/favicon.ico" alt="favicon">
+      <div class="title">PastezBin</div>
+    </div>
+    <div id="tabs">
+      <div class="tab active" data-mode="text">text</div>
+      <div class="tab" data-mode="image">image</div>
+    </div>
   </div>
 
   <div id="content">
