@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <title>Pastez Bin</title>
   <link rel="icon" href="/static/favicon.ico">
+
   <style>
     html,
     body {
@@ -16,6 +17,7 @@
       flex-direction: column;
     }
 
+    /* Tabs */
     #tabs {
       display: flex;
       justify-content: center;
@@ -53,12 +55,27 @@
       overflow: auto;
     }
 
+    .hidden {
+      display: none;
+    }
+
     /* Images */
     #imageView {
       flex: 1;
       padding: 20px;
       overflow: auto;
-      display: none;
+    }
+
+    /* CSS Placeholder (no JS needed) */
+    #imageView:empty::before {
+      content: "Paste an image here (Ctrl+V)";
+      display: flex;
+      height: 100%;
+      align-items: center;
+      justify-content: center;
+      color: #6c7086;
+      opacity: 0.6;
+      font-size: 14px;
     }
 
     .imageWrapper {
@@ -86,7 +103,7 @@
       opacity: 1;
     }
 
-    .imageControls .imgIcon {
+    .imgIcon {
       width: 20px;
       height: 20px;
       padding: 6px;
@@ -96,20 +113,8 @@
       transition: background 0.2s ease;
     }
 
-    .imageControls .imgIcon:hover {
+    .imgIcon:hover {
       background: rgba(0, 0, 0, 0.9);
-    }
-
-    .imagePlaceholder {
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #6c7086;
-      font-size: 14px;
-      opacity: 0.6;
-      text-align: center;
-      pointer-events: none;
     }
   </style>
 </head>
@@ -123,7 +128,7 @@
 
   <div id="content">
     <textarea id="editor" placeholder="Start typing..."></textarea>
-    <div id="imageView"></div>
+    <div id="imageView" class="hidden"></div>
   </div>
 
   <script src="static/pako.min.js"></script>
@@ -137,18 +142,18 @@
 
       let mode = "text";
       let images = [];
+      let lastHash = "";
 
       /* -------- Tab Switch -------- */
       function switchMode(newMode) {
         mode = newMode;
 
-        tabs.forEach(t => t.classList.remove("active"));
-        document.querySelector(`[data-mode="${newMode}"]`).classList.add("active");
+        tabs.forEach(t =>
+          t.classList.toggle("active", t.dataset.mode === newMode)
+        );
 
-        editor.style.display = newMode === "text" ? "block" : "none";
-        imageView.style.display = newMode === "image" ? "block" : "none";
-
-        renderImages();
+        editor.classList.toggle("hidden", newMode !== "text");
+        imageView.classList.toggle("hidden", newMode !== "image");
         saveToURL();
       }
 
@@ -164,8 +169,10 @@
         for (let i = 0; i < uint8.length; i++) {
           binary += String.fromCharCode(uint8[i]);
         }
-        let base64 = btoa(binary);
-        return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        return btoa(binary)
+          .replace(/\+/g, '-')
+          .replace(/\//g, '_')
+          .replace(/=+$/, '');
       }
 
       function base64UrlToUint8(base64url) {
@@ -179,125 +186,107 @@
         return bytes;
       }
 
-      /* -------- Render Images -------- */
-      function renderImages() {
-        imageView.innerHTML = "";
+      function renderImages(src, index) {
 
-        if (images.length === 0) {
-          const placeholder = document.createElement("div");
-          placeholder.className = "imagePlaceholder";
-          placeholder.textContent = "Paste an image here (Ctrl+V)";
-          imageView.appendChild(placeholder);
-          return;
-        }
+        const wrapper = document.createElement("div");
+        wrapper.className = "imageWrapper";
 
-        images.forEach((src, index) => {
+        const img = document.createElement("img");
+        img.src = src;
 
-          const wrapper = document.createElement("div");
-          wrapper.className = "imageWrapper";
+        const controls = document.createElement("div");
+        controls.className = "imageControls";
 
-          const img = document.createElement("img");
-          img.src = src;
+        const downloadIcon = document.createElement("img");
+        downloadIcon.src = "/static/download.svg";
+        downloadIcon.className = "imgIcon";
+        downloadIcon.alt = "download";
 
-          const controls = document.createElement("div");
-          controls.className = "imageControls";
+        downloadIcon.addEventListener("click", async () => {
+          const image = new Image();
+          image.src = src;
+          await image.decode();
 
-          const downloadIcon = document.createElement("img");
-          downloadIcon.src = "/static/download.svg";
-          downloadIcon.className = "imgIcon";
-          downloadIcon.alt = "download";
-          downloadIcon.addEventListener("click", async () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = image.width;
+          canvas.height = image.height;
+          canvas.getContext("2d").drawImage(image, 0, 0);
 
-            const img = new Image();
-            img.src = src;
-            await img.decode();
-
-            const canvas = document.createElement("canvas");
-            canvas.width = img.width;
-            canvas.height = img.height;
-
-            const ctx = canvas.getContext("2d");
-            ctx.drawImage(img, 0, 0);
-
-            const link = document.createElement("a");
-            link.download = "image.png";
-            link.href = canvas.toDataURL("image/png");
-            link.click();
-          });
-
-          const deleteIcon = document.createElement("img");
-          deleteIcon.src = "/static/trash.svg";
-          deleteIcon.className = "imgIcon";
-          deleteIcon.alt = "delete";
-          deleteIcon.addEventListener("click", () => {
-            images.splice(index, 1);
-            renderImages();
-            saveToURL();
-          });
-
-          controls.appendChild(downloadIcon);
-          controls.appendChild(deleteIcon);
-
-          wrapper.appendChild(img);
-          wrapper.appendChild(controls);
-          imageView.appendChild(wrapper);
+          const link = document.createElement("a");
+          link.download = "image.png";
+          link.href = canvas.toDataURL("image/png");
+          link.click();
         });
+
+        const deleteIcon = document.createElement("img");
+        deleteIcon.src = "/static/trash.svg";
+        deleteIcon.className = "imgIcon";
+        deleteIcon.alt = "delete";
+
+        deleteIcon.addEventListener("click", () => {
+          images.splice(index, 1);
+          wrapper.remove();
+          saveToURL();
+        });
+
+        controls.appendChild(downloadIcon);
+        controls.appendChild(deleteIcon);
+
+        wrapper.appendChild(img);
+        wrapper.appendChild(controls);
+        imageView.appendChild(wrapper);
       }
 
       /* -------- Save -------- */
       function saveToURL() {
         const encoder = new TextEncoder();
+        let newHash = "";
 
         if (mode === "text") {
-          const input = encoder.encode(editor.value);
-          const compressed = pako.deflateRaw(input);
-          const encoded = uint8ToBase64Url(compressed);
-          history.replaceState(null, null, '#t:' + encoded);
+          const compressed = pako.deflateRaw(encoder.encode(editor.value));
+          newHash = '#t:' + uint8ToBase64Url(compressed);
         }
 
         if (mode === "image") {
           const payload = JSON.stringify(images);
-          const input = encoder.encode(payload);
-          const compressed = pako.deflateRaw(input);
-          const encoded = uint8ToBase64Url(compressed);
-          history.replaceState(null, null, '#i:' + encoded);
+          const compressed = pako.deflateRaw(encoder.encode(payload));
+          newHash = '#i:' + uint8ToBase64Url(compressed);
+        }
+
+        if (newHash !== lastHash) {
+          history.replaceState(null, null, newHash);
+          lastHash = newHash;
         }
       }
 
       /* -------- Load -------- */
       function loadFromURL() {
-
-        if (location.hash.length <= 1) {
-          renderImages();
-          return;
-        }
+        if (location.hash.length <= 1) return;
 
         try {
           const raw = location.hash.substring(1);
           const type = raw.substring(0, 2);
           const encoded = raw.substring(2);
 
-          const compressed = base64UrlToUint8(encoded);
-          const decompressed = pako.inflateRaw(compressed);
+          const decompressed = pako.inflateRaw(
+            base64UrlToUint8(encoded)
+          );
 
-          const decoder = new TextDecoder();
-          const decoded = decoder.decode(decompressed);
+          const decoded = new TextDecoder().decode(decompressed);
 
           if (type === "t:") {
             editor.value = decoded;
-            images = [];
             switchMode("text");
           }
 
           if (type === "i:") {
             images = JSON.parse(decoded);
-            editor.value = "";
             switchMode("image");
+            images.forEach((src, i) => renderImages(src, i));
           }
 
         } catch (e) {
           console.error("Load failed:", e);
-          renderImages();
         }
       }
 
@@ -305,9 +294,7 @@
       document.addEventListener("paste", async (e) => {
         if (mode !== "image") return;
 
-        const items = e.clipboardData.items;
-
-        for (let item of items) {
+        for (let item of e.clipboardData.items) {
           if (item.type.startsWith("image/")) {
             e.preventDefault();
 
@@ -321,14 +308,16 @@
             canvas.width = bitmap.width * scale;
             canvas.height = bitmap.height * scale;
 
-            const ctx = canvas.getContext("2d");
-            ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+            canvas.getContext("2d")
+              .drawImage(bitmap, 0, 0, canvas.width, canvas.height);
 
-            canvas.toBlob((blob) => {
+            bitmap.close();
+
+            canvas.toBlob(blob => {
               const reader = new FileReader();
               reader.onload = function () {
                 images.push(reader.result);
-                renderImages();
+                renderImages(reader.result, images.length - 1);
                 saveToURL();
               };
               reader.readAsDataURL(blob);
