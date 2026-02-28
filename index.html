@@ -17,7 +17,6 @@
       flex-direction: column;
     }
 
-    /* Top bar */
     #topbar {
       display: flex;
       align-items: center;
@@ -25,6 +24,7 @@
       border-bottom: 1px solid #313244;
       font-size: 13px;
       height: 44px;
+      position: relative;
     }
 
     #brand {
@@ -47,7 +47,35 @@
       letter-spacing: 0.2px;
     }
 
-    /* Tabs */
+    #actions {
+      position: absolute;
+      right: 12px;
+      display: flex;
+      align-items: center;
+    }
+
+    #copyLink {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      padding: 6px 10px;
+      border-radius: 6px;
+      color: #cdd6f4;
+      opacity: 0.85;
+      transition: background 0.2s ease, opacity 0.2s ease;
+    }
+
+    #copyLink:hover {
+      background: rgba(255, 255, 255, 0.08);
+      opacity: 1;
+    }
+
+    #copyLink img {
+      width: 16px;
+      height: 16px;
+    }
+
     #tabs {
       display: flex;
       justify-content: center;
@@ -88,7 +116,6 @@
       display: none;
     }
 
-    /* Images */
     #imageView {
       flex: 1;
       padding: 20px;
@@ -154,9 +181,17 @@
       <img src="/static/favicon.ico" alt="favicon">
       <div class="title">PastezBin</div>
     </div>
+
     <div id="tabs">
       <div class="tab active" data-mode="text">text</div>
       <div class="tab" data-mode="image">image</div>
+    </div>
+
+    <div id="actions">
+      <div id="copyLink">
+        <img src="/static/copy.svg" alt="copy icon">
+        <span id="copyText">Copy Link</span>
+      </div>
     </div>
   </div>
 
@@ -173,10 +208,25 @@
       const editor = document.getElementById("editor");
       const imageView = document.getElementById("imageView");
       const tabs = document.querySelectorAll(".tab");
+      const copyBtn = document.getElementById("copyLink");
+      const copyText = document.getElementById("copyText");
 
       let mode = "text";
       let images = [];
       let lastHash = "";
+
+      /* Copy Link */
+      copyBtn.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(window.location.href);
+          copyText.textContent = "Copied!";
+          setTimeout(() => {
+            copyText.textContent = "Copy Link";
+          }, 1200);
+        } catch (err) {
+          console.error("Copy failed:", err);
+        }
+      });
 
       /* -------- Tab Switch -------- */
       function switchMode(newMode) {
@@ -255,10 +305,10 @@
         deleteIcon.alt = "delete";
 
         deleteIcon.addEventListener("click", () => {
-        const currentIndex = images.indexOf(src);
-        if (currentIndex !== -1) {
-          images.splice(currentIndex, 1);
-        }
+          const currentIndex = images.indexOf(src);
+          if (currentIndex !== -1) {
+            images.splice(currentIndex, 1);
+          }
           wrapper.remove();
           saveToURL();
         });
@@ -376,8 +426,6 @@
         clearTimeout(timeout);
         timeout = setTimeout(saveToURL, 500);
       });
-
-      loadFromURL();
 
     });
   </script>
