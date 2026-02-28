@@ -277,13 +277,14 @@
         let newHash = "";
 
         if (mode === "text") {
-          const compressed = pako.deflateRaw(encoder.encode(editor.value));
+          rawString = editor.value;
+          const compressed = pako.deflateRaw(encoder.encode(rawString));
           newHash = '#t:' + uint8ToBase64Url(compressed);
         }
 
         if (mode === "image") {
-          const payload = JSON.stringify(images);
-          const compressed = pako.deflateRaw(encoder.encode(payload));
+          const rawString = JSON.stringify(images);
+          const compressed = pako.deflateRaw(encoder.encode(rawString));
           newHash = '#i:' + uint8ToBase64Url(compressed);
         }
 
@@ -291,6 +292,12 @@
           history.replaceState(null, null, newHash);
           lastHash = newHash;
         }
+
+        const rawBytes = encoder.encode(rawString).length;
+        const finalURLLength = (newHash).length;
+
+        console.log("Raw bytes:", rawBytes);
+        console.log("Final URL length:", finalURLLength);
       }
 
       /* -------- Load -------- */
