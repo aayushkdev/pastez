@@ -13,9 +13,8 @@ Just text → compressed → stored in the URL.
 
 - You type some text or paste an image.
 - This is then compressed using **Deflate (pako)**.
-- The compressed data is encoded safely for URLs.
-- It is stored in the URL hash (`#` part).
-- When you open the link again, it decompresses automatically.
+- The compressed data is then encoded using base64 and stored in the URL.
+- When you open the link again, the data is decompressed and restored..
 
 You can copy the URL and share it.  
 Anyone who opens the link will see the same text or image.
