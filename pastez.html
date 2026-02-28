@@ -199,10 +199,7 @@
 
       /* -------- Base64URL helpers -------- */
       function uint8ToBase64Url(uint8) {
-        let binary = '';
-        for (let i = 0; i < uint8.length; i++) {
-          binary += String.fromCharCode(uint8[i]);
-        }
+        const binary = String.fromCharCode(...uint8);
         return btoa(binary)
           .replace(/\+/g, '-')
           .replace(/\//g, '_')
@@ -258,7 +255,10 @@
         deleteIcon.alt = "delete";
 
         deleteIcon.addEventListener("click", () => {
-          images.splice(index, 1);
+        const currentIndex = images.indexOf(src);
+        if (currentIndex !== -1) {
+          images.splice(currentIndex, 1);
+        }
           wrapper.remove();
           saveToURL();
         });
@@ -274,6 +274,7 @@
       /* -------- Save -------- */
       function saveToURL() {
         const encoder = new TextEncoder();
+        let rawString = "";
         let newHash = "";
 
         if (mode === "text") {
@@ -283,7 +284,7 @@
         }
 
         if (mode === "image") {
-          const rawString = JSON.stringify(images);
+          rawString = JSON.stringify(images);
           const compressed = pako.deflateRaw(encoder.encode(rawString));
           newHash = '#i:' + uint8ToBase64Url(compressed);
         }
