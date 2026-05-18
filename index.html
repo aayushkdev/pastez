@@ -122,6 +122,13 @@
       overflow: auto;
     }
 
+    #imageView:not(.hidden) {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
     #imageView:empty::before {
       content: "Paste an image here (Ctrl+V)";
       display: flex;
@@ -131,6 +138,14 @@
       color: #6c7086;
       opacity: 0.6;
       font-size: 14px;
+    }
+
+    #imageView.hasImages {
+      justify-content: flex-start;
+    }
+
+    #imageView.hasImages:empty::before {
+      display: none;
     }
 
     .imageWrapper {
@@ -171,6 +186,71 @@
     .imgIcon:hover {
       background: rgba(0, 0, 0, 0.9);
     }
+
+    #dropZone {
+      width: 100%;
+      max-width: 500px;
+      min-height: 180px;
+      height: auto;
+      border: 2px dashed #45475a;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      cursor: pointer;
+      transition: border-color 0.2s ease, background 0.2s ease;
+      flex-shrink: 0;
+    }
+
+    #dropZone:hover,
+    #dropZone.dragOver {
+      border-color: #89b4fa;
+      background: rgba(137, 180, 250, 0.05);
+    }
+
+    #dropZone.hidden {
+      display: none;
+    }
+
+    #dropZone svg {
+      width: 48px;
+      height: 48px;
+      stroke: #6c7086;
+    }
+
+    #dropZone p {
+      margin: 0;
+      color: #6c7086;
+      font-size: 14px;
+    }
+
+    #dropZone .uploadBtn {
+      margin-top: 4px;
+      padding: 8px 16px;
+      background: rgba(137, 180, 250, 0.15);
+      color: #89b4fa;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+
+    #imagesContainer {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      padding-bottom: 14px;
+    }
+
+    .imageWrapper {
+      position: relative;
+      display: inline-block;
+    }
+
+    .imageWrapper img {
+      max-width: 100%;
+      display: block;
+    }
   </style>
 </head>
 
@@ -197,7 +277,19 @@
 
   <div id="content">
     <textarea id="editor" placeholder="Start typing..."></textarea>
-    <div id="imageView" class="hidden"></div>
+    <div id="imageView" class="hidden">
+      <div id="imagesContainer"></div>
+      <div id="dropZone">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <p>Drag and drop an image here, or click to browse</p>
+        <div class="uploadBtn">Select from folder</div>
+        <input type="file" id="fileInput" accept="image/*" style="display: none">
+      </div>
+    </div>
   </div>
 
   <script src="static/pako.min.js"></script>
@@ -210,6 +302,9 @@
       const tabs = document.querySelectorAll(".tab");
       const copyBtn = document.getElementById("copyLink");
       const copyText = document.getElementById("copyText");
+      const dropZone = document.getElementById("dropZone");
+      const fileInput = document.getElementById("fileInput");
+      const imagesContainer = document.getElementById("imagesContainer");
 
       let mode = "text";
       let images = [];
@@ -311,6 +406,7 @@
           }
           wrapper.remove();
           saveToURL();
+          updateDropZoneVisibility();
         });
 
         controls.appendChild(downloadIcon);
@@ -318,7 +414,16 @@
 
         wrapper.appendChild(img);
         wrapper.appendChild(controls);
-        imageView.appendChild(wrapper);
+        imagesContainer.appendChild(wrapper);
+        updateDropZoneVisibility();
+      }
+
+      function updateDropZoneVisibility() {
+        if (images.length > 0) {
+          imageView.classList.add("hasImages");
+        } else {
+          imageView.classList.remove("hasImages");
+        }
       }
 
       /* -------- Save -------- */
@@ -389,38 +494,73 @@
         for (let item of e.clipboardData.items) {
           if (item.type.startsWith("image/")) {
             e.preventDefault();
-
             const file = item.getAsFile();
-            const bitmap = await createImageBitmap(file);
-
-            const maxWidth = 1200;
-            const scale = Math.min(1, maxWidth / bitmap.width);
-
-            const canvas = document.createElement("canvas");
-            canvas.width = bitmap.width * scale;
-            canvas.height = bitmap.height * scale;
-
-            canvas.getContext("2d")
-              .drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-
-            bitmap.close();
-
-            canvas.toBlob(blob => {
-              const reader = new FileReader();
-              reader.onload = function () {
-                images.push(reader.result);
-                renderImages(reader.result, images.length - 1);
-                saveToURL();
-              };
-              reader.readAsDataURL(blob);
-            }, "image/webp", 0.75);
-
+            await processImageFile(file);
             return;
           }
         }
       });
 
       loadFromURL();
+      updateDropZoneVisibility();
+
+      /* -------- Drop Zone -------- */
+      dropZone.addEventListener("click", () => {
+        fileInput.click();
+      });
+
+      fileInput.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (file && file.type.startsWith("image/")) {
+          processImageFile(file);
+        }
+        fileInput.value = "";
+      });
+
+      dropZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dropZone.classList.add("dragOver");
+      });
+
+      dropZone.addEventListener("dragleave", (e) => {
+        e.preventDefault();
+        dropZone.classList.remove("dragOver");
+      });
+
+      dropZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropZone.classList.remove("dragOver");
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith("image/")) {
+          processImageFile(file);
+        }
+      });
+
+      async function processImageFile(file) {
+        const bitmap = await createImageBitmap(file);
+
+        const maxWidth = 1200;
+        const scale = Math.min(1, maxWidth / bitmap.width);
+
+        const canvas = document.createElement("canvas");
+        canvas.width = bitmap.width * scale;
+        canvas.height = bitmap.height * scale;
+
+        canvas.getContext("2d")
+          .drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+
+        bitmap.close();
+
+        canvas.toBlob(blob => {
+          const reader = new FileReader();
+          reader.onload = function () {
+            images.push(reader.result);
+            renderImages(reader.result, images.length - 1);
+            saveToURL();
+          };
+          reader.readAsDataURL(blob);
+        }, "image/webp", 0.75);
+      }
 
       /* -------- Auto Save -------- */
       let timeout;
